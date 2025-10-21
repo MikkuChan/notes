@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catatan Server – fadzdigital</title>
+  <meta name="description" content="Catat server (label, domain, portal, email, jadwal perpanjangan) dengan penyimpanan lokal (localStorage) + pengingat H‑N." />
+  <link rel="icon" href="https://raw.githubusercontent.com/fadzdigital/image/main/favicon.ico" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#050914; --grad1:#0ea5e9; --grad2:#38bdf8; --accent:#f8d247; --card:#0b1220;
+      --muted:#9fb0c9; --text:#eaf2fb; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --info:#60a5fa;
+      --radius:18px; --shadow:0 8px 28px rgba(2,8,23,.45);
+      --t-fast:.18s; --t-med:.35s; --t-slow:.6s; --ease:cubic-bezier(.2,.8,.2,1)
+    }
+    *{box-sizing:border-box}
+    @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
+    body{margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial;color:var(--text);background:
+      radial-gradient(1200px 600px at -10% -20%, rgba(14,165,233,.18), transparent),
+      radial-gradient(1000px 500px at 120% 0%, rgba(248,210,71,.12), transparent),
+      linear-gradient(180deg,rgba(255,255,255,.02),transparent), var(--bg);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+    a{color:inherit}
+    .container{max-width:1160px;margin:42px auto;padding:0 20px;animation:slideFade var(--t-slow) both}
+    header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand img{width:40px;height:40px;border-radius:12px;box-shadow:var(--shadow)}
+    .brand h1{margin:0;font-size:1.2rem;font-family:'Space Grotesk', Inter, system-ui;font-weight:700}
+    .pill{font-size:.72rem;padding:.2rem .6rem;border-radius:999px;background:linear-gradient(90deg,var(--grad1),var(--grad2));color:#001018;font-weight:800}
+
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{position:relative;overflow:hidden;isolation:isolate;appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;font-weight:700;transition:transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), background var(--t-fast) var(--ease);display:inline-flex;align-items:center;gap:8px}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 10px 20px rgba(14,165,233,.15)}
+    .btn:active{transform:translateY(0)}
+    .btn.primary{border:0;background:linear-gradient(90deg,var(--grad1),var(--grad2));color:#001018;box-shadow:0 6px 18px rgba(14,165,233,.35)}
+    .btn.warn{border-color:rgba(245,158,11,.45)}
+    .btn.danger{border-color:rgba(239,68,68,.45)}
+    .btn.ghost{background:transparent;border:1px dashed rgba(255,255,255,.18)}
+    .btn .ripple{position:absolute;inset:auto auto 0 0;width:10px;height:10px;border-radius:999px;background:rgba(255,255,255,.35);opacity:0;transform:translate(-50%,-50%) scale(0);pointer-events:none;filter:blur(1px)}
+
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--card);border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow);border-radius:var(--radius);padding:16px;transition:transform var(--t-med) var(--ease), box-shadow var(--t-med) var(--ease)}
+    .card:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(2,8,23,.55)}
+
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0}
+    @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){.kpis{grid-template-columns:1fr}}
+    .kpi{padding:14px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between}
+    .kpi strong{font-size:1.1rem;display:inline-block;min-width:1ch}
+
+    .searchbar{display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;margin:16px 0}
+    @media(max-width:960px){.searchbar{grid-template-columns:1fr 1fr;grid-auto-rows:auto}}
+    .input{display:flex;align-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:8px 12px}
+    .input input{all:unset;flex:1;font-size:.98rem;padding:6px;color:var(--text)}
+    select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:12px;color:var(--text);padding:10px;transition:box-shadow var(--t-fast) var(--ease)}
+    select:focus{box-shadow:0 0 0 3px rgba(14,165,233,.25)}
+    select option{background:var(--card);color:var(--text)}
+
+    .quicktabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    @media(max-width:1100px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:700px){.grid{grid-template-columns:1fr}}
+
+    .item .header{display:flex;align-items:center;justify-content:space-between}
+    .item h3{margin:0 0 4px;font-size:1rem;font-family:'Space Grotesk', Inter}
+    .meta{color:#c9d4e5;font-size:.9rem}
+    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+    .chip{font-size:.78rem;border:1px dashed rgba(255,255,255,.18);padding:.28rem .6rem;border-radius:999px}
+    .progress{position:relative;height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:8px}
+    .progress>span{position:absolute;inset:0 0 0 0;transform-origin:left center;background:linear-gradient(90deg,var(--grad1),var(--grad2));transition:transform var(--t-slow) var(--ease)}
+    .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .actions .btn{padding:8px 10px}
+
+    .empty{border:1px dashed rgba(255,255,255,.12);border-radius:14px;padding:18px;text-align:center;color:var(--muted)}
+
+    .footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted)}
+
+    dialog{border:0;border-radius:16px;padding:0;background:transparent}
+    .modal{min-width:340px;max-width:640px;background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;animation:pop var(--t-med) var(--ease) both}
+    dialog::backdrop{background:rgba(0,0,0,.35);animation:fade var(--t-med) both}
+    .modal header{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .modal .content{padding:16px;display:grid;gap:12px}
+    .modal .row{display:grid;gap:6px}
+    .modal label{font-size:.9rem;color:var(--muted)}
+    .modal input,.modal textarea, .modal select{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:var(--text);border-radius:12px;padding:10px}
+    .modal textarea{min-height:80px;resize:vertical}
+    .modal footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:flex-end;gap:8px}
+
+    .toast{position:fixed;right:16px;bottom:16px;background:#0b1324;border:1px solid rgba(255,255,255,.12);padding:12px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:opacity var(--t-med) var(--ease), transform var(--t-med) var(--ease)}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .badge{font-size:.78rem;padding:.25rem .6rem;border-radius:999px;font-weight:700;letter-spacing:.2px}
+    .badge.ok{background:rgba(34,197,94,.15);color:#b7f7c9;border:1px solid rgba(34,197,94,.35)}
+    .badge.bin{background:rgba(239,68,68,.15);color:#ffc2c2;border:1px solid rgba(239,68,68,.35)}
+    .badge.warn{background:rgba(245,158,11,.15);color:#ffe4b5;border:1px solid rgba(245,158,11,.35)}
+    .badge.info{background:rgba(96,165,250,.18);color:#cfe2ff;border:1px solid rgba(96,165,250,.4)}
+
+    .icon{width:16px;height:16px;display:inline-block}
+
+    @keyframes slideFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+    @keyframes fade{from{opacity:0}to{opacity:1}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img src="https://raw.githubusercontent.com/fadzdigital/image/main/favicon.ico" alt="fadzdigital" />
+        <h1>Catatan Server</h1>
+        <span class="pill">LOCAL</span>
+      </div>
+      <div class="toolbar">
+        <button id="btnAdd" class="btn primary"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Tambah</button>
+        <button id="btnExport" class="btn"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8 11l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 21h16" stroke="currentColor" stroke-width="1.5"/></svg> Ekspor</button>
+        <label class="btn" for="fileImport"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16 13l-4-4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 3h16v6H4z" stroke="currentColor" stroke-width="1.5"/></svg> Impor</label>
+        <input id="fileImport" type="file" accept="application/json" style="display:none" />
+        <button id="btnToggleBin" class="btn warn"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7h16M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" stroke="currentColor" stroke-width="1.5"/></svg> Recycle Bin</button>
+        <button id="btnClearAll" class="btn danger"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Bersihkan Semua</button>
+      </div>
+    </header>
+
+    <section class="kpis">
+      <div class="kpi card"><div><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2Z" fill="currentColor"/><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" stroke="currentColor" stroke-width="1.5"/></svg> Jatuh tempo hari ini</div><strong id="kpiToday">0</strong></div>
+      <div class="kpi card"><div><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h12v4l-4 4 4 4v4H6v-4l4-4-4-4V3Z" stroke="currentColor" stroke-width="1.5"/></svg> Jatuh tempo ≤ 3 hari</div><strong id="kpiSoon">0</strong></div>
+      <div class="kpi card"><div><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 3v4M17 3v4M4 8h16v12H4V8Z" stroke="currentColor" stroke-width="1.5"/></svg> Jatuh tempo bulan ini</div><strong id="kpiMonth">0</strong></div>
+      <div class="kpi card"><div><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3h8v6H8V3ZM3 10h6v4H3v-4Zm12 0h6v4h-6v-4ZM10 17h4v4h-4v-4Z" stroke="currentColor" stroke-width="1.5"/></svg> Total server aktif</div><strong id="kpiActive">0</strong></div>
+    </section>
+
+    <section class="card">
+      <div class="quicktabs">
+        <button class="btn ghost" data-tab="today">Hari ini</button>
+        <button class="btn ghost" data-tab="due">≤ 3 Hari</button>
+        <button class="btn ghost" data-tab="active">Aktif</button>
+        <button class="btn ghost" data-tab="all">Semua</button>
+        <button class="btn ghost" data-tab="bin">Bin</button>
+      </div>
+      <div class="searchbar">
+        <div class="input" style="min-width:260px"><input id="q" placeholder="Cari: label / domain / portal / email / catatan" /></div>
+        <select id="sort">
+          <option value="-updatedAt">Terbaru diubah</option>
+          <option value="renewalAt">Jatuh Tempo (terdekat)</option>
+          <option value="-createdAt">Terbaru dibuat</option>
+          <option value="label">Label (A→Z)</option>
+          <option value="domain">Domain (A→Z)</option>
+        </select>
+        <select id="view">
+          <option value="all">Semua</option>
+          <option value="active">Aktif</option>
+          <option value="due">Akan jatuh tempo ≤ 3 hari</option>
+          <option value="today">Jatuh tempo hari ini</option>
+          <option value="bin">Recycle Bin</option>
+        </select>
+        <button id="btnNotify" class="btn"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" stroke="currentColor" stroke-width="1.5"/></svg> Notifikasi: <span id="notifState">OFF</span></button>
+        <button id="btnPref" class="btn"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a7.97 7.97 0 0 0 0-6l2-1.15-2-3.46-2.3.66a8 8 0 0 0-5.2-3l-.35-2.55H9.45L9.1 1.05a8 8 0 0 0-5.2 3L1.6 3.4l-2 3.46L1.6 8a7.97 7.97 0 0 0 0 6l-2 1.15 2 3.46 2.3-.66a8 8 0 0 0 5.2 3l.35 2.55h3.1l.35-2.55a8 8 0 0 0 5.2-3l2.3.66 2-3.46L19.4 15Z" stroke="currentColor" stroke-width="1.5"/></svg> Preferensi</button>
+      </div>
+      <div id="list" class="grid"></div>
+      <div id="empty" class="empty" style="display:none">Belum ada data. Klik <b>Tambah</b> untuk membuat catatan server pertama kamu.</div>
+    </section>
+
+    <div class="footer">
+      <div><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px;margin-right:6px"><ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" stroke="currentColor" stroke-width="1.5"/><path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" stroke="currentColor" stroke-width="1.5"/></svg> Penyimpanan: <b>localStorage</b> (hanya di perangkat & browser ini). Backup berkala via <b>Ekspor</b>.</div>
+      <div>© <span id="y"></span> fadzdigital</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- MODAL FORM -->
+  <dialog id="dlg">
+    <div class="modal">
+      <header><strong id="dlgTitle">Tambah Server</strong></header>
+      <div class="content">
+        <div class="row"><label>Label / Penanda (mis. IKD 1)</label><input id="f_label" placeholder="IKD 1" /></div>
+        <div class="row"><label>Domain / Host</label><input id="f_domain" placeholder="id.contoh.com" /></div>
+        <div class="row"><label>URL Portal</label><input id="f_portal" placeholder="https://portal.penyedia.com" /></div>
+        <div class="row"><label>Email Akun</label><input id="f_email" type="email" placeholder="email@contoh.com" /></div>
+        <div class="row"><label>Username (opsional)</label><input id="f_username" placeholder="fdz123" /></div>
+        <div class="row"><label>Catatan</label><textarea id="f_notes" placeholder="Catatan tambahan (IP limit, quota, invoice, dsb.)"></textarea></div>
+        <div class="row"><label>Tanggal Perpanjangan (Jatuh Tempo)</label><input id="f_renewal" type="date" /></div>
+        <div class="row"><label>Pengingat sebelum jatuh tempo</label>
+          <select id="f_remindBefore">
+            <option value="1">H-1</option>
+            <option value="3" selected>H-3</option>
+            <option value="7">H-7</option>
+            <option value="14">H-14</option>
+          </select>
+        </div>
+      </div>
+      <footer>
+        <button class="btn" id="btnCancel">Batal</button>
+        <button class="btn primary" id="btnSave">Simpan</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- MODAL KONFIRM -->
+  <dialog id="confirm">
+    <div class="modal">
+      <header><strong id="confirmTitle">Konfirmasi</strong></header>
+      <div class="content">
+        <div id="confirmBody">Yakin?</div>
+      </div>
+      <footer>
+        <button class="btn" id="confirmCancel">Batal</button>
+        <button class="btn danger" id="confirmOK">Lanjut</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- MODAL PREFERENSI -->
+  <dialog id="pref">
+    <div class="modal">
+      <header><strong>Preferensi</strong></header>
+      <div class="content">
+        <div class="row"><label>Default +hari saat "Perpanjang (Done)"</label><input id="p_autoDays" type="number" min="1" value="30" /></div>
+        <div class="row"><label>Mode tampilan</label>
+          <select id="p_density">
+            <option value="comfortable">Nyaman</option>
+            <option value="compact">Ringkas</option>
+          </select>
+        </div>
+      </div>
+      <footer>
+        <button class="btn" id="prefCancel">Tutup</button>
+        <button class="btn primary" id="prefSave">Simpan Preferensi</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <script>
+    // Namespaces (dengan migrasi dari versi VPN lama)
+    const NS_CURRENT = 'fdz.servers.v2';
+    const NS_OLD = ['fdz.vpn.servers.v2','fdz.vpn.servers.v1'];
+    const NS_PREF = 'fdz.servers.settings.v1';
+    const NS_PREF_OLD = 'fdz.vpn.settings.v1';
+
+    // Helpers
+    const $ = (s, el=document)=> el.querySelector(s);
+    const $$ = (s, el=document)=> Array.from(el.querySelectorAll(s));
+    const toast = (m)=>{ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._tm); toast._tm=setTimeout(()=> t.classList.remove('show'), 2600) };
+    const nowISO = ()=> new Date().toISOString();
+    const todayYMD = ()=> new Date().toISOString().slice(0,10);
+    const toYMD = (d)=> new Date(d).toISOString().slice(0,10);
+    const startOfDay = (d)=> { const x=new Date(d); x.setHours(0,0,0,0); return x };
+    const daysBetween = (a,b)=> Math.round((startOfDay(b)-startOfDay(a))/86400000);
+    const daysLeft = (due)=> daysBetween(new Date(), new Date(due));
+    function escapeHTML(s){ return String(s).replace(/&|<|>|\"|'|`/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\'':'&#39;','`':'&#96;'}[c])) }
+
+    function loadPref(){
+      try{
+        const cur = JSON.parse(localStorage.getItem(NS_PREF));
+        if(cur) return cur;
+        const old = JSON.parse(localStorage.getItem(NS_PREF_OLD));
+        return old || {autoDays:30,density:'comfortable',notif:'auto',sort:'-updatedAt',view:'all'};
+      }catch{
+        return {autoDays:30,density:'comfortable',notif:'auto',sort:'-updatedAt',view:'all'}
+      }
+    }
+    function savePref(p){ localStorage.setItem(NS_PREF, JSON.stringify(p)); }
+    let PREF = loadPref();
+
+    function normalize(db){ db.meta=db.meta||{version:2}; db.items=(db.items||[]).map(hydrate); db.bin=(db.bin||[]).map(hydrate); return db }
+    function save(db){ localStorage.setItem(NS_CURRENT, JSON.stringify(db)); }
+    function uid(){ return 'id-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36) }
+    function hydrate(x){
+      return { id:x.id||uid(), label:x.label||'', domain:x.domain||'', portal:x.portal||'', email:x.email||'', username:x.username||'', notes:x.notes||'', createdAt:x.createdAt||nowISO(), updatedAt:x.updatedAt||nowISO(), active:x.active!==false, renewalAt:x.renewalAt||todayYMD(), remindBefore:Number.isFinite(+x.remindBefore)?Number(x.remindBefore):3, lastNotifiedYMD:x.lastNotifiedYMD||null, lastRenewedAt:x.lastRenewedAt||null }
+    }
+
+    function load(){
+      try{
+        const cur = localStorage.getItem(NS_CURRENT);
+        if(cur){ return normalize(JSON.parse(cur)) }
+        for(const oldKey of NS_OLD){
+          const raw = localStorage.getItem(oldKey);
+          if(raw){
+            const old = JSON.parse(raw);
+            const migrated = { items:(old.items||[]).map(hydrate), bin:(old.bin||[]).map(hydrate), meta:{version:2} };
+            save(migrated); return migrated;
+          }
+        }
+        return { items:[], bin:[], meta:{version:2} };
+      }catch(e){ return { items:[], bin:[], meta:{version:2} } }
+    }
+
+    let DB = load();
+
+    function fmtDT(s){ return new Date(s).toLocaleString('id-ID', { dateStyle:'medium', timeStyle:'short' }) }
+    function fmtYMD(s){ try{ return new Date(s).toLocaleDateString('id-ID', { dateStyle:'medium' }) }catch{ return '-' } }
+    function linkify(url){ if(!url) return '#'; try{ const u = new URL(url.includes('://')? url : ('https://' + url)); return u.href }catch{ return '#' } }
+
+    // KPI anim counter
+    function countTo(el, to){
+      const from = Number(el.textContent)||0; const start = performance.now(); const dur = 600;
+      function step(t){ const p = Math.min(1, (t-start)/dur); const val = Math.round(from + (to-from)*p); el.textContent = val; if(p<1) requestAnimationFrame(step) }
+      requestAnimationFrame(step);
+    }
+
+    function kpi(){
+      const items = DB.items.filter(x=>x.active);
+      const today = todayYMD();
+      const nToday = items.filter(x=> toYMD(x.renewalAt)===today).length;
+      const nSoon = items.filter(x=> daysLeft(x.renewalAt) >=0 && daysLeft(x.renewalAt) <=3).length;
+      const month = new Date().getMonth(); const year = new Date().getFullYear();
+      const nMonth = items.filter(x=>{ const d=new Date(x.renewalAt); return d.getMonth()===month && d.getFullYear()===year }).length;
+      const nActive = items.length;
+      countTo($('#kpiToday'), nToday);
+      countTo($('#kpiSoon'), nSoon);
+      countTo($('#kpiMonth'), nMonth);
+      countTo($('#kpiActive'), nActive);
+    }
+
+    function render(){
+      document.body.classList.toggle('compact', PREF.density==='compact');
+      $('#sort').value = PREF.sort; $('#view').value = PREF.view;
+      const list = $('#list'); const empty = $('#empty');
+      list.innerHTML = '';
+      const q = $('#q').value.trim().toLowerCase();
+      const sort = $('#sort').value; const view = $('#view').value;
+      let items = (view==='bin'? DB.bin : DB.items);
+
+      if(view==='active') items = items.filter(x=>x.active);
+      if(view==='due') items = items.filter(x=> daysLeft(x.renewalAt) >=0 && daysLeft(x.renewalAt) <=3);
+      if(view==='today') items = items.filter(x=> toYMD(x.renewalAt)===todayYMD());
+
+      if(q){ items = items.filter(x=> [x.label,x.domain,x.portal,x.email,x.username,x.notes].some(v=> String(v||'').toLowerCase().includes(q))) }
+
+      items = items.slice().sort((a,b)=>{
+        const dir = sort.startsWith('-')? -1:1; const key = sort.replace(/^-/,'');
+        if(key==='renewalAt'){ return (new Date(a.renewalAt) - new Date(b.renewalAt)) * dir; }
+        const av = String(a[key]||''); const bv = String(b[key]||'');
+        return av.localeCompare(bv) * dir;
+      });
+
+      if(!items.length){ empty.style.display='block'; kpi(); return } else empty.style.display='none';
+
+      items.forEach((it, i)=>{
+        const dleft = daysLeft(it.renewalAt);
+        let dueBadge = '';
+        if(dleft===0) dueBadge = '<span class="badge warn">Jatuh tempo hari ini</span>';
+        else if(dleft>0 && dleft<=it.remindBefore) dueBadge = `<span class="badge info">H-${dleft}</span>`;
+        else if(dleft<0) dueBadge = '<span class="badge bin">Lewat tempo</span>';
+
+        // progress bar estimasi
+        const base = it.lastRenewedAt || it.createdAt; const total = Math.max(1, daysBetween(base, it.renewalAt)); const used = Math.max(0, Math.min(total, daysBetween(base, new Date()))); const pct = Math.max(0, Math.min(100, Math.round((used/total)*100)));
+
+        const card = document.createElement('div'); card.className='card item'; card.style.animation='slideFade .45s both'; card.style.animationDelay=(i*45)+'ms';
+        card.innerHTML = `
+          <div class="header">
+            <div style="display:flex;align-items:center;gap:8px">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 4H6a2 2 0 0 0-2 2v12l3-2 3 2 3-2 3 2V6a2 2 0 0 0-2-2Z" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h5M8 12h8M8 16h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <h3>${escapeHTML(it.label || '(tanpa label)')}</h3>
+            </div>
+            <button class="btn danger" data-act="delete" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" stroke="currentColor" stroke-width="1.5"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4 7h16M9 4h6l1 3H8l1-3Z" stroke="currentColor" stroke-width="1.5"/></svg> Hapus</button>
+          </div>
+          <div class="meta">${escapeHTML(it.domain || '-')}</div>
+          <div class="chips">
+            ${it.portal? `<span class="chip">Portal: <a href="${linkify(it.portal)}" target="_blank" rel="noopener">${escapeHTML(it.portal)}</a></span>`:''}
+            ${it.email? `<span class="chip">Email: ${escapeHTML(it.email)}</span>`:''}
+            ${it.username? `<span class="chip">User: ${escapeHTML(it.username)}</span>`:''}
+            <span class="chip">Jatuh tempo: ${fmtYMD(it.renewalAt)}</span>
+            <span class="chip">Pengingat: H-${it.remindBefore}</span>
+            ${it.active? `<span class="badge ok">AKTIF</span>`: `<span class="badge bin">NON‑AKTIF</span>`}
+            ${dueBadge}
+          </div>
+          <div class="progress" title="${pct}% periode menuju jatuh tempo"><span style="transform:scaleX(${pct/100})"></span></div>
+          ${it.notes? `<div style="margin-top:8px;color:var(--muted);white-space:pre-wrap">${escapeHTML(it.notes)}</div>`:''}
+          <div class="actions">
+            <button class="btn" data-act="copy" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 9h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.5"/><path d="M7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.5"/></svg> Salin</button>
+            <button class="btn" data-act="open" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9-9 4.03-9 9 4.03 9 9 9Z" stroke="currentColor" stroke-width="1.5"/><path d="M3 12h18M12 3c2.5 3 2.5 9 0 18M12 3c-2.5 3-2.5 9 0 18" stroke="currentColor" stroke-width="1.5"/></svg> Buka Portal</button>
+            <button class="btn" data-act="toggle" data-id="${it.id}">${it.active? '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 8v8M15 8v8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Nonaktifkan' : '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 8l7 4-7 4V8Z" stroke="currentColor" stroke-width="1.5"/></svg> Aktifkan'}</button>
+            <button class="btn" data-act="schedule" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 8v5l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.5"/></svg> Jadwalkan Ulang</button>
+            <button class="btn" data-act="done" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 7 9 18l-5-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Perpanjang (Done)</button>
+            ${view==='bin'
+              ? `<button class="btn warn" data-act="restore" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 12H5m7-7-7 7 7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Pulihkan</button>
+                 <button class="btn danger" data-act="purge" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h16M9 4h6l1 3H8l1-3Z" stroke="currentColor" stroke-width="1.5"/></svg> Hapus Permanen</button>`
+              : `<button class="btn" data-act="edit" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Z" stroke="currentColor" stroke-width="1.5"/><path d="M14.06 6.19l3.75 3.75" stroke="currentColor" stroke-width="1.5"/></svg> Edit</button>
+                 <button class="btn danger" data-act="del" data-id="${it.id}"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 7l-1 12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 7" stroke="currentColor" stroke-width="1.5"/><path d="M4 7h16M9 4h6l1 3H8l1-3Z" stroke="currentColor" stroke-width="1.5"/></svg> Ke Bin</button>`}
+          </div>
+        `;
+        list.appendChild(card);
+      });
+      kpi();
+    }
+
+    function create(data){ const it = hydrate({...data, id:uid(), createdAt:nowISO(), updatedAt:nowISO(), active:true}); DB.items.push(it); save(DB); render(); return it }
+    function update(id, patch){ const arr = [...DB.items, ...DB.bin]; const it = arr.find(x=>x.id===id); if(!it) return; Object.assign(it, patch, {updatedAt:nowISO()}); save(DB); render(); return it }
+    function toBin(id){ const idx = DB.items.findIndex(x=>x.id===id); if(idx<0) return; const [it] = DB.items.splice(idx,1); DB.bin.push(it); save(DB); render(); }
+    function restore(id){ const idx = DB.bin.findIndex(x=>x.id===id); if(idx<0) return; const [it] = DB.bin.splice(idx,1); DB.items.push(it); save(DB); render(); }
+    function purge(id){ const idx = DB.bin.findIndex(x=>x.id===id); if(idx<0) return; DB.bin.splice(idx,1); save(DB); render(); }
+    function clearAll(){ DB = { items:[], bin:[], meta:{version:2} }; save(DB); render(); }
+
+    function exportJSON(){ const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `servers-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`; a.click(); URL.revokeObjectURL(a.href); }
+    function importJSON(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result); const merge = confirm('Impor: Gabungkan dengan data sekarang? (OK=Merge, Cancel=Replace)'); if(merge){ const merged = normalize(DB); const incoming = normalize(data); const map=new Map(); [...merged.items,...incoming.items].forEach(x=> map.set(x.id,x)); DB={ items:[...map.values()], bin:[...new Map([...merged.bin,...incoming.bin].map(x=>[x.id,x])).values()], meta:{version:2} }; } else { DB=normalize(data); } save(DB); render(); resolve(DB);}catch(e){reject(e)} }; fr.onerror=()=>reject(new Error('Gagal membaca file')); fr.readAsText(file); }) }
+
+    // modal helpers
+    function openConfirm(title, body){ $('#confirmTitle').textContent=title; $('#confirmBody').textContent=body; $('#confirm').showModal(); return new Promise(res=>{ const ok=()=>{ cleanup(); res(true) }, no=()=>{ cleanup(); res(false) }; function cleanup(){ $('#confirmOK').removeEventListener('click', ok); $('#confirmCancel').removeEventListener('click', no); $('#confirm').close(); } $('#confirmOK').addEventListener('click', ok); $('#confirmCancel').addEventListener('click', no); }); }
+
+    let DB = load(); // ensure DB defined before using
+    let editingId = null;
+    function openModal(mode='add', data={}){ editingId = mode==='edit'? data.id : null; $('#dlgTitle').textContent = mode==='edit'? 'Edit Server' : 'Tambah Server'; $('#f_label').value=data.label||''; $('#f_domain').value=data.domain||''; $('#f_portal').value=data.portal||''; $('#f_email').value=data.email||''; $('#f_username').value=data.username||''; $('#f_notes').value=data.notes||''; $('#f_renewal').value=(data.renewalAt? toYMD(data.renewalAt): ''); $('#f_remindBefore').value=String(data.remindBefore ?? 3); $('#dlg').showModal(); }
+    function closeModal(){ $('#dlg').close(); }
+    function collectForm(){ const o={ label:$('#f_label').value.trim(), domain:$('#f_domain').value.trim(), portal:$('#f_portal').value.trim(), email:$('#f_email').value.trim(), username:$('#f_username').value.trim(), notes:$('#f_notes').value.trim(), renewalAt: $('#f_renewal').value ? toYMD($('#f_renewal').value) : todayYMD(), remindBefore:Number($('#f_remindBefore').value || 3) }; if(!o.label) return [null,'Label wajib diisi']; if(o.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(o.email)) return [null,'Email tidak valid']; if(o.domain && !/^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/.test(o.domain)) return [null,'Domain/host tidak valid']; if(o.portal && !/^https?:\/\//i.test(o.portal)) o.portal='https://'+o.portal; return [o,null]; }
+
+    function requestNotif(){ if(!('Notification' in window)) { toast('Browser tidak mendukung notifikasi'); return; } if(Notification.permission==='granted'){ $('#notifState').textContent='ON'; PREF.notif='on'; savePref(PREF); toast('Notifikasi aktif'); return; } Notification.requestPermission().then(p=>{ const on=(p==='granted'); $('#notifState').textContent=(on?'ON':'OFF'); PREF.notif= on? 'on':'off'; savePref(PREF); if(on) toast('Notifikasi diaktifkan'); }); }
+    function notifyOnce(it, title, body){ try{ if(!('Notification' in window) || Notification.permission!=='granted') return; const key=toYMD(it.renewalAt); if(it.lastNotifiedYMD===key) return; new Notification(title,{ body }); update(it.id,{ lastNotifiedYMD:key }); }catch(e){} }
+    function scanDue(){ DB.items.filter(x=>x.active).forEach(it=>{ const d=daysLeft(it.renewalAt); if(d===0) notifyOnce(it, `Jatuh tempo: ${it.label}`, `Hari ini perpanjang ${it.label} (${it.domain})`); else if(d>0 && d<=it.remindBefore) notifyOnce(it, `H-${d}: ${it.label}`, `Perpanjang ${it.label} ${fmtYMD(it.renewalAt)}`); }); }
+    setInterval(scanDue, 60000);
+
+    // Ripple effect for all .btn
+    document.addEventListener('click', (e)=>{
+      const b=e.target.closest('.btn'); if(!b) return; const r=document.createElement('span'); r.className='ripple'; const rect=b.getBoundingClientRect(); const size=Math.max(rect.width, rect.height); r.style.width=r.style.height=size+'px'; const x=e.clientX-rect.left; const y=e.clientY-rect.top; r.style.left=x+'px'; r.style.top=y+'px'; b.appendChild(r); r.animate([{opacity:.35, transform:'translate(-50%,-50%) scale(0)'},{opacity:0, transform:'translate(-50%,-50%) scale(1)'}], {duration:600, easing:'ease-out'}).onfinish=()=> r.remove();
+    });
+
+    // bindings
+    $('#y').textContent = new Date().getFullYear();
+    $('#btnAdd').addEventListener('click', ()=> openModal('add'));
+    $('#btnCancel').addEventListener('click', closeModal);
+    $('#btnSave').addEventListener('click', ()=>{ const [data,err]=collectForm(); if(err){ toast(err); return } if(editingId){ update(editingId,data); toast('Catatan diperbarui'); } else { create(data); toast('Catatan ditambahkan'); } closeModal(); });
+    $('#btnExport').addEventListener('click', exportJSON);
+    $('#fileImport').addEventListener('change', async (e)=>{ const f=e.target.files?.[0]; if(!f) return; try{ await importJSON(f); toast('Impor berhasil'); } catch(e){ toast('Impor gagal: '+(e.message||e)) } e.target.value=''; });
+    $('#btnToggleBin').addEventListener('click', ()=>{ $('#view').value = ($('#view').value==='bin'?'all':'bin'); PREF.view=$('#view').value; savePref(PREF); render(); });
+    $('#btnClearAll').addEventListener('click', async ()=>{ const ok=await openConfirm('Bersihkan Semua','Aksi ini akan menghapus semua data (items & bin). Lanjutkan?'); if(ok){ clearAll(); toast('Semua data dihapus'); } });
+    $('#btnNotify').addEventListener('click', requestNotif);
+    $('#btnPref').addEventListener('click', ()=>{ $('#p_autoDays').value=PREF.autoDays||30; $('#p_density').value=PREF.density||'comfortable'; $('#pref').showModal(); });
+    $('#prefCancel').addEventListener('click', ()=> $('#pref').close());
+    $('#prefSave').addEventListener('click', ()=>{ PREF.autoDays = Math.max(1, parseInt($('#p_autoDays').value||30,10)); PREF.density=$('#p_density').value; savePref(PREF); $('#pref').close(); render(); toast('Preferensi disimpan'); });
+
+    $('#q').addEventListener('input', ()=> render());
+    $('#sort').addEventListener('change', ()=>{ PREF.sort=$('#sort').value; savePref(PREF); render(); });
+    $('#view').addEventListener('change', ()=>{ PREF.view=$('#view').value; savePref(PREF); render(); });
+    $$('.quicktabs .btn').forEach(b=> b.addEventListener('click', ()=>{ $('#view').value=b.dataset.tab; PREF.view=b.dataset.tab; savePref(PREF); render(); }));
+
+    $('#list').addEventListener('click', async (e)=>{
+      const b = e.target.closest('button[data-act]'); if(!b) return; const id=b.dataset.id; const act=b.dataset.act; const arr=[...DB.items,...DB.bin]; const it=arr.find(x=>x.id===id);
+      if(act==='edit'){ if(it) openModal('edit', it);
+      } else if(act==='del'){ toBin(id); toast('Dipindahkan ke Recycle Bin');
+      } else if(act==='restore'){ restore(id); toast('Dipulihkan');
+      } else if(act==='purge'){ const ok=await openConfirm('Hapus Permanen','Data tidak bisa dikembalikan. Yakin?'); if(ok){ purge(id); toast('Dihapus permanen'); }
+      } else if(act==='delete'){ const ok=await openConfirm('Hapus Server','Server akan dihapus sekarang (lewati Bin). Yakin?'); if(ok){ const idx1=DB.items.findIndex(x=>x.id===id); if(idx1>-1) DB.items.splice(idx1,1); const idx2=DB.bin.findIndex(x=>x.id===id); if(idx2>-1) DB.bin.splice(idx2,1); save(DB); render(); toast('Server dihapus'); }
+      } else if(act==='toggle'){ if($('#view').value==='bin'){ toast('Aktif/nonaktif hanya di tampilan utama'); return; } update(id,{ active:!it.active });
+      } else if(act==='open'){ if(!it?.portal){ toast('Portal kosong'); return } window.open(linkify(it.portal),'_blank');
+      } else if(act==='copy'){ const text=`Label: ${it.label}\nDomain: ${it.domain}\nPortal: ${it.portal}\nEmail: ${it.email}\nUsername: ${it.username}\nJatuh tempo: ${fmtYMD(it.renewalAt)}`; navigator.clipboard.writeText(text).then(()=> toast('Disalin ke clipboard'));
+      } else if(act==='schedule'){ const d=prompt('Masukkan tanggal jatuh tempo baru (YYYY-MM-DD):', toYMD(it.renewalAt)); if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)) update(id,{ renewalAt:d, lastNotifiedYMD:null });
+      } else if(act==='done'){ const nextDefault = toYMD(new Date(Date.now()+PREF.autoDays*86400000)); const next=prompt(`Jadwalkan jatuh tempo berikutnya (YYYY-MM-DD). Default +${PREF.autoDays} hari:`, nextDefault); if(next && /^\d{4}-\d{2}-\d{2}$/.test(next)) update(id,{ lastRenewedAt: nowISO(), renewalAt: next, lastNotifiedYMD:null }); else update(id,{ lastRenewedAt: nowISO() }); }
+    });
+
+    // Jalankan awal
+    $('#y').textContent = new Date().getFullYear();
+    render();
+    if(window.Notification && Notification.permission==='granted'){ $('#notifState').textContent='ON' }
+    setTimeout(scanDue, 400); // cek due ringan setelah render
+  </script>
+</body>
+</html>
