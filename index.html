@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Catatan Server – fadzdigital</title>
-  <meta name="description" content="Catat server (label, domain, portal, email, jadwal perpanjangan) dengan penyimpanan lokal (localStorage) + pengingat H‑N." />
+  <title>Catatan Server VPN – fadzdigital</title>
+  <meta name="description" content="Catat server VPN (label, domain, portal, email, jadwal perpanjangan) dengan penyimpanan lokal (localStorage) + pengingat H‑N." />
   <link rel="icon" href="https://raw.githubusercontent.com/fadzdigital/image/main/favicon.ico" />
   <meta name="theme-color" content="#0ea5e9" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -109,7 +109,7 @@
     <header>
       <div class="brand">
         <img src="https://raw.githubusercontent.com/fadzdigital/image/main/favicon.ico" alt="fadzdigital" />
-        <h1>Catatan Server</h1>
+        <h1>Catatan Server VPN</h1>
         <span class="pill">LOCAL</span>
       </div>
       <div class="toolbar">
@@ -161,7 +161,7 @@
     </section>
 
     <div class="footer">
-      <div><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align:-3px;margin-right:6px"><ellipse cx="12" cy="6" rx="8" ry="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" stroke="currentColor" stroke-width="1.5"/><path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" stroke="currentColor" stroke-width="1.5"/></svg> Penyimpanan: <b>localStorage</b> (hanya di perangkat & browser ini). Backup berkala via <b>Ekspor</b>.</div>
+      <div>💾 Penyimpanan: <b>localStorage</b> (hanya di perangkat & browser ini). Backup berkala via <b>Ekspor</b>.</div>
       <div>© <span id="y"></span> fadzdigital</div>
     </div>
   </div>
@@ -231,13 +231,9 @@
   </dialog>
 
   <script>
-    // Namespaces (dengan migrasi dari versi VPN lama)
-    const NS_CURRENT = 'fdz.servers.v2';
-    const NS_OLD = ['fdz.vpn.servers.v2','fdz.vpn.servers.v1'];
-    const NS_PREF = 'fdz.servers.settings.v1';
-    const NS_PREF_OLD = 'fdz.vpn.settings.v1';
-
-    // Helpers
+    const NS_V1 = 'fdz.vpn.servers.v1';
+    const NS = 'fdz.vpn.servers.v2';
+    const NS_PREF = 'fdz.vpn.settings.v1';
     const $ = (s, el=document)=> el.querySelector(s);
     const $$ = (s, el=document)=> Array.from(el.querySelectorAll(s));
     const toast = (m)=>{ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._tm); toast._tm=setTimeout(()=> t.classList.remove('show'), 2600) };
@@ -249,40 +245,28 @@
     const daysLeft = (due)=> daysBetween(new Date(), new Date(due));
     function escapeHTML(s){ return String(s).replace(/&|<|>|\"|'|`/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\'':'&#39;','`':'&#96;'}[c])) }
 
-    function loadPref(){
-      try{
-        const cur = JSON.parse(localStorage.getItem(NS_PREF));
-        if(cur) return cur;
-        const old = JSON.parse(localStorage.getItem(NS_PREF_OLD));
-        return old || {autoDays:30,density:'comfortable',notif:'auto',sort:'-updatedAt',view:'all'};
-      }catch{
-        return {autoDays:30,density:'comfortable',notif:'auto',sort:'-updatedAt',view:'all'}
-      }
-    }
+    function loadPref(){ try{ return JSON.parse(localStorage.getItem(NS_PREF))||{autoDays:30,density:'comfortable',notif:'auto',sort:'-updatedAt',view:'all'} }catch{ return {autoDays:30,density:'comfortable',notif:'auto',sort:'-updatedAt',view:'all'} } }
     function savePref(p){ localStorage.setItem(NS_PREF, JSON.stringify(p)); }
     let PREF = loadPref();
 
-    function normalize(db){ db.meta=db.meta||{version:2}; db.items=(db.items||[]).map(hydrate); db.bin=(db.bin||[]).map(hydrate); return db }
-    function save(db){ localStorage.setItem(NS_CURRENT, JSON.stringify(db)); }
-    function uid(){ return 'id-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36) }
-    function hydrate(x){
-      return { id:x.id||uid(), label:x.label||'', domain:x.domain||'', portal:x.portal||'', email:x.email||'', username:x.username||'', notes:x.notes||'', createdAt:x.createdAt||nowISO(), updatedAt:x.updatedAt||nowISO(), active:x.active!==false, renewalAt:x.renewalAt||todayYMD(), remindBefore:Number.isFinite(+x.remindBefore)?Number(x.remindBefore):3, lastNotifiedYMD:x.lastNotifiedYMD||null, lastRenewedAt:x.lastRenewedAt||null }
-    }
-
     function load(){
       try{
-        const cur = localStorage.getItem(NS_CURRENT);
-        if(cur){ return normalize(JSON.parse(cur)) }
-        for(const oldKey of NS_OLD){
-          const raw = localStorage.getItem(oldKey);
-          if(raw){
-            const old = JSON.parse(raw);
-            const migrated = { items:(old.items||[]).map(hydrate), bin:(old.bin||[]).map(hydrate), meta:{version:2} };
-            save(migrated); return migrated;
-          }
+        const v2raw = localStorage.getItem(NS);
+        if(v2raw){ return normalize(JSON.parse(v2raw)) }
+        const v1raw = localStorage.getItem(NS_V1);
+        if(v1raw){
+          const old = JSON.parse(v1raw);
+          const migrated = { items:(old.items||[]).map(hydrate), bin:(old.bin||[]).map(hydrate), meta:{version:2} };
+          save(migrated); return migrated;
         }
         return { items:[], bin:[], meta:{version:2} };
       }catch(e){ return { items:[], bin:[], meta:{version:2} } }
+    }
+    function normalize(db){ db.meta=db.meta||{version:2}; db.items=(db.items||[]).map(hydrate); db.bin=(db.bin||[]).map(hydrate); return db }
+    function save(db){ localStorage.setItem(NS, JSON.stringify(db)); }
+    function uid(){ return 'id-' + Math.random().toString(36).slice(2,10) + '-' + Date.now().toString(36) }
+    function hydrate(x){
+      return { id:x.id||uid(), label:x.label||'', domain:x.domain||'', portal:x.portal||'', email:x.email||'', username:x.username||'', notes:x.notes||'', createdAt:x.createdAt||nowISO(), updatedAt:x.updatedAt||nowISO(), active:x.active!==false, renewalAt:x.renewalAt||todayYMD(), remindBefore:Number.isFinite(+x.remindBefore)?Number(x.remindBefore):3, lastNotifiedYMD:x.lastNotifiedYMD||null, lastRenewedAt:x.lastRenewedAt||null }
     }
 
     let DB = load();
@@ -292,6 +276,7 @@
     function linkify(url){ if(!url) return '#'; try{ const u = new URL(url.includes('://')? url : ('https://' + url)); return u.href }catch{ return '#' } }
 
     // KPI anim counter
+    const KPI_PREV = {today:0, soon:0, month:0, active:0};
     function countTo(el, to){
       const from = Number(el.textContent)||0; const start = performance.now(); const dur = 600;
       function step(t){ const p = Math.min(1, (t-start)/dur); const val = Math.round(from + (to-from)*p); el.textContent = val; if(p<1) requestAnimationFrame(step) }
@@ -392,13 +377,12 @@
     function purge(id){ const idx = DB.bin.findIndex(x=>x.id===id); if(idx<0) return; DB.bin.splice(idx,1); save(DB); render(); }
     function clearAll(){ DB = { items:[], bin:[], meta:{version:2} }; save(DB); render(); }
 
-    function exportJSON(){ const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `servers-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`; a.click(); URL.revokeObjectURL(a.href); }
+    function exportJSON(){ const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `vpn-servers-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`; a.click(); URL.revokeObjectURL(a.href); }
     function importJSON(file){ return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>{ try{ const data=JSON.parse(fr.result); const merge = confirm('Impor: Gabungkan dengan data sekarang? (OK=Merge, Cancel=Replace)'); if(merge){ const merged = normalize(DB); const incoming = normalize(data); const map=new Map(); [...merged.items,...incoming.items].forEach(x=> map.set(x.id,x)); DB={ items:[...map.values()], bin:[...new Map([...merged.bin,...incoming.bin].map(x=>[x.id,x])).values()], meta:{version:2} }; } else { DB=normalize(data); } save(DB); render(); resolve(DB);}catch(e){reject(e)} }; fr.onerror=()=>reject(new Error('Gagal membaca file')); fr.readAsText(file); }) }
 
     // modal helpers
     function openConfirm(title, body){ $('#confirmTitle').textContent=title; $('#confirmBody').textContent=body; $('#confirm').showModal(); return new Promise(res=>{ const ok=()=>{ cleanup(); res(true) }, no=()=>{ cleanup(); res(false) }; function cleanup(){ $('#confirmOK').removeEventListener('click', ok); $('#confirmCancel').removeEventListener('click', no); $('#confirm').close(); } $('#confirmOK').addEventListener('click', ok); $('#confirmCancel').addEventListener('click', no); }); }
 
-    let DB = load(); // ensure DB defined before using
     let editingId = null;
     function openModal(mode='add', data={}){ editingId = mode==='edit'? data.id : null; $('#dlgTitle').textContent = mode==='edit'? 'Edit Server' : 'Tambah Server'; $('#f_label').value=data.label||''; $('#f_domain').value=data.domain||''; $('#f_portal').value=data.portal||''; $('#f_email').value=data.email||''; $('#f_username').value=data.username||''; $('#f_notes').value=data.notes||''; $('#f_renewal').value=(data.renewalAt? toYMD(data.renewalAt): ''); $('#f_remindBefore').value=String(data.remindBefore ?? 3); $('#dlg').showModal(); }
     function closeModal(){ $('#dlg').close(); }
@@ -447,11 +431,20 @@
       } else if(act==='done'){ const nextDefault = toYMD(new Date(Date.now()+PREF.autoDays*86400000)); const next=prompt(`Jadwalkan jatuh tempo berikutnya (YYYY-MM-DD). Default +${PREF.autoDays} hari:`, nextDefault); if(next && /^\d{4}-\d{2}-\d{2}$/.test(next)) update(id,{ lastRenewedAt: nowISO(), renewalAt: next, lastNotifiedYMD:null }); else update(id,{ lastRenewedAt: nowISO() }); }
     });
 
-    // Jalankan awal
-    $('#y').textContent = new Date().getFullYear();
+    // bersihkan contoh jika pernah tersimpan
+    (function autoCleanExamples(){
+      const emails = new Set(['akun@contoh.com','owner@example.com']);
+      const i0 = DB.items.length, b0 = DB.bin.length;
+      DB.items = DB.items.filter(x=> !emails.has((x.email||'').toLowerCase()));
+      DB.bin   = DB.bin.filter(x=> !emails.has((x.email||'').toLowerCase()));
+      if(DB.items.length!==i0 || DB.bin.length!==b0){ save(DB); }
+    })();
     render();
+
+    // restore notif state text
     if(window.Notification && Notification.permission==='granted'){ $('#notifState').textContent='ON' }
-    setTimeout(scanDue, 400); // cek due ringan setelah render
+
+    render();
   </script>
 </body>
 </html>
